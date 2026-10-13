@@ -112,10 +112,10 @@ def create_datastore_layer(
         try:
             gdf = gpd.read_postgis(f'SELECT * FROM "{layer_name}"', conn, "geometry")
         except ValueError:
-            gdf = gpd.read_file("selected_polygon.geojson")
+            gdf = gpd.read_file("examples/selected_polygon.geojson")
     else:
         # Default values if nothing else is available
-        gdf = gpd.read_file("selected_polygon.geojson")
+        gdf = gpd.read_file("examples/selected_polygon.geojson")
     minx, miny, maxx, maxy = gdf.total_bounds
     minx4326, miny4326, maxx4326, maxy4326 = gdf.to_crs(4326).total_bounds
     crs = gdf.crs.to_epsg()

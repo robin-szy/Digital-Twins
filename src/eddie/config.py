@@ -212,4 +212,7 @@ class EnvVariable:  # pylint: disable=too-few-public-methods
     GEOSERVER_ADMIN_NAME = _get_env_variable("GEOSERVER_ADMIN_NAME", default="admin")
     GEOSERVER_ADMIN_PASSWORD = _get_env_variable("GEOSERVER_ADMIN_PASSWORD", default="geoserver")
 
+    # CRS core processing runs in, e.g. "EPSG:32759". Unset: derived from the area of interest, else EPSG:4326.
+    WORKING_CRS = _get_env_variable("EDDIE_WORKING_CRS", allow_empty=True)
+
     IS_ON_GITHUB_ACTIONS = _get_bool_env_variable("GITHUB_ACTIONS", default=False)

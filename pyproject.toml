@@ -28,6 +28,8 @@ dependencies = [
     "pytest",
     "dotenv",
     "pywps",
+    "pyproj",
+    "rasterio",
     "sqlalchemy",
 ]
 requires-python = ">=3.11"

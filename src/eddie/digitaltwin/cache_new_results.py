@@ -63,7 +63,8 @@ def main(
     engine = setup_environment.get_database()
     with engine.connect() as conn:
         create_table(conn, CacheResults)
-        geometry = selected_polygon_gdf.geometry[0].wkt
+        # Stored in a fixed CRS, not the per-request working CRS - see CacheResults.geometry's comment in tables.py.
+        geometry = selected_polygon_gdf.to_crs(CacheResults.geometry.type.srid).geometry[0].wkt
 
         # Cache the results attached to the scenario input parameters
         log.info("Caching model results.")

@@ -28,7 +28,7 @@ from sqlalchemy.sql import text
 
 from eddie.digitaltwin import setup_environment
 from eddie.digitaltwin.utils import LogLevel, setup_logging
-from eddie.digitaltwin.tables import check_table_exists
+from eddie.digitaltwin.tables import CacheResults, check_table_exists
 
 log = logging.getLogger(__name__)
 
@@ -59,15 +59,18 @@ def main(selected_polygon: gpd.GeoDataFrame, scenario_options: dict) -> int | No
             return None
 
         log.info("Checking cache for matching model parameters")
-        # Query for the matching cache
+        # Query for the matching cache. geometry is stored in a fixed CRS (not the per-request working
+        # CRS) - see CacheResults.geometry's comment in tables.py - so the polygon is reprojected to match.
+        cache_crs = CacheResults.geometry.type.srid
+        aoi_in_cache_crs = selected_polygon.to_crs(cache_crs).geometry.iloc[0].wkt
         query = text(
-            """
+            f"""
             SELECT *
             FROM cache_results
             WHERE scenario_options::jsonb = cast(:scenario_options as jsonb)
-            AND st_contains(geometry, st_geomfromtext(:aoi_polygon, 2193))
+            AND st_contains(geometry, st_geomfromtext(:aoi_polygon, {cache_crs}))
          """
-        ).bindparams(scenario_options=json.dumps(scenario_options), aoi_polygon=selected_polygon.geometry.iloc[0].wkt)
+        ).bindparams(scenario_options=json.dumps(scenario_options), aoi_polygon=aoi_in_cache_crs)
         row = conn.execute(query).fetchone()
 
     if row is None:  # If the row is empty then we could not find the model output

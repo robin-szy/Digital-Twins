@@ -23,7 +23,10 @@ import logging
 import pathlib
 import shutil
 
+import rasterio
 import requests
+from pyproj import CRS
+from pyproj.enums import WktVersion
 
 from eddie.config import EnvVariable
 from eddie.geoserver.geoserver_common import get_geoserver_url
@@ -87,7 +90,9 @@ def upload_gtiff_to_store(
     log.info(f"Uploaded {gtiff_filepath.name} to Geoserver workspace {workspace_name}.")
 
 
-def create_layer_from_gtiff_store(geoserver_url: str, layer_name: str, workspace_name: str) -> None:
+def create_layer_from_gtiff_store(
+    geoserver_url: str, layer_name: str, workspace_name: str, gtiff_filepath: pathlib.Path
+) -> None:
     """
     Create a GeoServer Layer from a GeoServer store, making it ready to serve.
 
@@ -99,16 +104,28 @@ def create_layer_from_gtiff_store(geoserver_url: str, layer_name: str, workspace
         Defines the name of the layer in GeoServer.
     workspace_name : str
         The name of the existing GeoServer workspace that the store is to be added to.
+    gtiff_filepath : pathlib.Path
+        The filepath to the GeoTiff file, used to read its own CRS rather than assuming one.
 
     Raises
     ----------
     HTTPError
         If geoserver responds with an error, raises it as an exception since it is unexpected.
+    ValueError
+        If the GeoTIFF has no CRS, or its CRS has no EPSG code.
     """
+    with rasterio.open(gtiff_filepath) as gtiff:
+        epsg_code = gtiff.crs.to_epsg() if gtiff.crs else None
+    if epsg_code is None:
+        raise ValueError(f"'{gtiff_filepath.name}' has no CRS with an EPSG code; cannot publish it to GeoServer.")
+    native_crs_wkt = CRS.from_epsg(epsg_code).to_wkt(WktVersion.WKT1_GDAL)
+
     # Read the template xml file in a way that works for downstream users of the eddie library.
     gtiff_coverage_template = resources.read_text("eddie.geoserver.templates", "geotiff_coverage_template.xml")
-    # Fill template to get payload
-    gtiff_coverage_payload = gtiff_coverage_template.format(layer_name=layer_name)
+    # Fill template to get payload, using the GeoTIFF's own CRS rather than assuming a fixed one.
+    gtiff_coverage_payload = gtiff_coverage_template.format(
+        layer_name=layer_name, native_crs_wkt=native_crs_wkt, epsg_code=epsg_code
+    )
     # Send request to create layer
     send_create_layer_request(geoserver_url, layer_name, workspace_name, gtiff_coverage_payload)
 
@@ -165,8 +182,8 @@ def add_gtiff_to_geoserver(gtiff_filepath: pathlib.Path, workspace_name: str, la
         delete_store(layer_name, workspace_name)
     # Upload the raster into geoserver
     upload_gtiff_to_store(gs_url, gtiff_filepath, layer_name, workspace_name)
-    # Create a GIS layer from the raster file to be served from geoserver
-    create_layer_from_gtiff_store(gs_url, layer_name, workspace_name)
+    # Create a GIS layer from the raster file to be served from geoserver, in the file's own CRS
+    create_layer_from_gtiff_store(gs_url, layer_name, workspace_name, gtiff_filepath)
 
 
 def style_exists(style_name: str) -> bool:

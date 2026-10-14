@@ -122,7 +122,9 @@ class CacheResults(Base):
     flood_model_id = Column(Integer)
     scenario_options = Column(JSON)
     created_at = Column(DateTime(timezone=True), default=datetime.now(timezone.utc), comment="log created datetime")
-    geometry = Column(Geometry("POLYGON", srid=2193))
+    # Stored in a fixed CRS (not the per-request working CRS, which varies by area of interest - see working_crs.py),
+    # same convention as UserLogInfo.geometry above.
+    geometry = Column(Geometry("POLYGON", srid=4326))
 
 
 def create_table(conn: Connection, table: Base) -> None:

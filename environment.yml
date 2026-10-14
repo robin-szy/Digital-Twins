@@ -39,9 +39,11 @@ dependencies:
   - pip
   - psycopg2==2.9.11 # Needed for Linux environments
   - pyarrow==23.0.1
+  - pyproj # Already resolved transitively via geopandas; pinned here since raster_layers.py now imports it directly
   - pytest==9.0.2
   - python-dotenv==1.2.2
   - python>=3.13
+  - rasterio # Already resolved transitively; pinned here since raster_layers.py now imports it directly
   - redis==5.0.3
   - scrapy==2.14.1
   - setuptools==82.0.1
